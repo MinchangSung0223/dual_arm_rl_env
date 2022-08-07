@@ -2,7 +2,7 @@
 <robot name="simpleplane">
     <!-- Colors --> 
     <material name="grey"> 
-        <color rgba="0.0 0.0 0.0 1"/>
+        <color rgba="0.91 0.925 0.945 1"/>
     </material>
 
     <!-- Plane -->

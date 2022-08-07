@@ -1,23 +1,23 @@
 <?xml version="1.0"?> 
-<robot name="simpleplane">
+<robot name="box">
     <!-- Colors --> 
-    <material name="grey"> 
-        <color rgba="0.0 0.0 0.0 1"/>
+    <material name="orange"> 
+        <color rgba="1 1 0 1 "/>
     </material>
 
     <!-- Plane -->
     <link name="base_link">
         <visual> 
             <geometry> 
-                <box size="20 20 0.01"/>
-                <origin rpy="0 0 0" xyz="-10 -10 -0.005"/>
+                 <sphere radius="0.05"/>
+                <origin rpy="0 0 0" xyz="0 0 0"/>
             </geometry>
-            <material name="grey"/>
+            <material name="orange"/>
         </visual>
         <collision> 
-             <geometry> 
-                <box size="20 20 0.01"/>
-                <origin rpy="0 0 0" xyz="-10 -10 -0.005"/>
+            <geometry> 
+                <sphere radius="0.05"/>
+                <origin rpy="0 0 0" xyz="0 0 0"/>
             </geometry>
         </collision> 
         <inertial> 

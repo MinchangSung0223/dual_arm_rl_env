@@ -71,8 +71,8 @@ if __name__ == "__main__":
 	p.setGravity(0,0,-10)
 	while 1:
 		
-		left_pos = [0.7,0.3+0.2*math.cos(20*t),0.7+0.2*math.sin(20*t)]
-		right_pos = [0.7,-0.3+0.2*math.sin(20*t),0.7+0.2*math.cos(20*t)]		
+		left_pos = [0.7,0.3,0.7]
+		right_pos = [0.7,-0.3,0.7]		
 		ik_left_joint_states = p.calculateInverseKinematics(dual_armId, 8, left_pos, orn, ll, ul,jr, joint_states)
 		ik_right_joint_states = p.calculateInverseKinematics(dual_armId, 21, right_pos, orn, ll, ul,jr, joint_states)
 		left_joint_states = ik_left_joint_states[0:6]
@@ -83,7 +83,7 @@ if __name__ == "__main__":
 		joint_states =[left_joint_states,ik_right_joint_states] 
 		left_eef = p.getLinkState(dual_armId,8)
 		right_eef = p.getLinkState(dual_armId,21)
-
+		print(joint_states)
 		#p.addUserDebugLine(left_eef[0], np.array(left_eef[0])+np.array([0.1,0,0]), [1, 0, 0], 5,t_step)
 		#p.addUserDebugLine(left_eef[0], np.array(left_eef[0])+np.array([0,0.1,0]), [0, 1, 0], 5,t_step)
 		#p.addUserDebugLine(left_eef[0], np.array(left_eef[0])+np.array([0,0,0.1]), [0, 0, 1], 5,t_step)

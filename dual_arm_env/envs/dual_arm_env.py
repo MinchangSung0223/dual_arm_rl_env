@@ -30,7 +30,7 @@ class DualArmEnv(gym.Env):
                actionRepeat=1,
                isEnableSelfCollision=True,
                renders=False,
-               isDiscrete=False,
+               isDiscrete=True,
                maxSteps=1000):
     self._isDiscrete = isDiscrete
     self._timeStep = 1. / 240.
@@ -59,15 +59,17 @@ class DualArmEnv(gym.Env):
     self.reset()
 
 
-    observationDim = 17
+    observationDim = len(self.getExtendedObservation())
     largeValObservation = 1
     observation_high = np.array([largeValObservation] * observationDim)
 
-    action_dim = 12
-    self._action_bound = np.pi
+    action_dim = 8
+    self._action_bound = 1
     action_high = np.array([self._action_bound] * action_dim)
-    self.action_space = spaces.Box(-action_high, action_high)
-    self.observation_space = spaces.Box(-observation_high, observation_high)
+    self.action_space = spaces.Box(low=-1, high=1, shape=(action_dim,))
+    self.observation_space = spaces.Box(low=0, high=255, shape=(RENDER_HEIGHT,
+                                                                RENDER_WIDTH,
+                                                                3))
     self.viewer = None
 
   def reset(self):
@@ -77,7 +79,6 @@ class DualArmEnv(gym.Env):
     p.setTimeStep(self._timeStep)
     p.loadURDF(os.path.join(self._urdfRoot, "simpleplane.urdf"), [0, 0, -0.1])
     p.setGravity(0, 0, -10)
-    print(self._urdfRoot)
     xpos = 0.3 + 0.3 * random.random()-0.15
     ypos = 0.0 + 0.5 * random.random()-0.25
     zpos = 0.5 + 0.3 * random.random()
@@ -108,12 +109,60 @@ class DualArmEnv(gym.Env):
     right_state = p.getLinkState(self._dualarm.dualarmUid, self._dualarm.right_eef_index)
     right_eef_pos = right_state[0]
     right_eef_orn = right_state[1]
-    return self._observation.extend(list(blockPos))
+    self._observation.extend(list(blockPos))
+    return self._observation
 
   def step(self, action):
-      realAction = action;
-      return self.step2(realAction)
+      dv = 0.005 
+      if self._isDiscrete:
+        assert isinstance(action, int)
+        left_dx = [0, -dv, dv, 0, 0, 0, 0, 0, 0][action]
+        left_dy = [0, 0, 0, -dv, dv, 0, 0, 0, 0][action]
+        left_dz = [0, 0, 0, 0, 0, -dv, dv, 0, 0][action]
+        left_da = [0, 0, 0, 0, 0, 0, 0, -0.25, 0.25][action]
+        right_dx = [0, -dv, dv, 0, 0, 0, 0, 0, 0][action]
+        right_dy = [0, 0, 0, -dv, dv, 0, 0, 0, 0][action]
+        right_dz = [0, 0, 0, 0, 0, -dv, dv, 0, 0][action]
+        right_da = [0, 0, 0, 0, 0, 0, 0, -0.25, 0.25][action]
+        f = 0.3
+      else:
+          dv = 0.005
+          left_dx = action[0] * dv
+          left_dy = action[1] * dv
+          left_dz = action[2] * dv      
+          left_da = action[3] * 0.05
 
+          right_dx = action[0] * dv
+          right_dy = action[1] * dv
+          right_dz = action[2] * dv      
+          right_da = action[3] * 0.05
+
+          f = 0.3
+
+      return self.step2([left_dx, left_dy, left_dz, left_da, f,right_dx, right_dy, right_dz, right_da,f] )
+  def step2(self, action):
+    for i in range(self._actionRepeat):
+      self._dualarm.applyAction(action)
+      p.stepSimulation()
+      if self._termination():
+        break
+      self._envStepCounter += 1
+    if self._renders:
+      time.sleep(self._timeStep)
+    self._observation = self.getExtendedObservation()
+    done = self._termination()
+    reward = self._reward();
+    return self._get_observation(), reward, done, {}
+
+  def _get_observation(self):
+
+    camera_T = p.getLinkState(self._dualarm.dualarmUid,self._dualarm.camera_index)
+
+    rgb_array = self.getCameraImage(camera_T[0],p.getEulerFromQuaternion(camera_T[1]))
+    rgb_array = np.array(rgb_array, dtype=np.uint8)
+    rgb_array = np.reshape(rgb_array, (RENDER_HEIGHT, RENDER_WIDTH, 4))
+    rgb_array = rgb_array[:, :, :3]
+    return rgb_array
   def getCameraImage(self, cam_pos,cam_orn):
     near = 0.01
     far = 1000
@@ -133,19 +182,7 @@ class DualArmEnv(gym.Env):
             projection_matrix,
             shadow=False)
     return px
-  def step2(self, action):
-    for i in range(self._actionRepeat):
-      self._dualarm.applyAction(action)
-      p.stepSimulation()
-      if self._termination():
-        break
-      self._envStepCounter += 1
-    if self._renders:
-      time.sleep(self._timeStep)
-    self._observation = self.getExtendedObservation()
-    done = self._termination()
-    reward = self._reward();
-    return np.array(self._observation), reward, done, {}
+
 
   def render(self, mode="rgb_array", close=False):
     if mode != "rgb_array":
@@ -193,10 +230,10 @@ class DualArmEnv(gym.Env):
       left_dist = np.linalg.norm(abs(np.array(blockPos)-np.array(left_eef_pos)))
       right_dist = np.linalg.norm(abs(np.array(blockPos)-np.array(right_eef_pos)))
 
-      if (0.5*left_dist+0.5*right_dist)<0.1:
+      if (left_dist)<0.1:
         reward = reward+10000
       else:
-        reward = -(0.5*left_dist+0.5*right_dist)
+        reward = -(left_dist)
 
       return reward
 

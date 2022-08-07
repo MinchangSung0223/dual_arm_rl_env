@@ -1,5 +1,7 @@
 
 import gym
+import dual_arm_env
+
 import math
 import random
 import numpy as np
@@ -24,7 +26,8 @@ from pybullet_envs.bullet.kuka_diverse_object_gym_env import KukaDiverseObjectEn
 from gym import spaces
 import pybullet as p
 
-env = KukaDiverseObjectEnv(renders=False, isDiscrete=True, removeHeightHack=False, maxSteps=20)
+#env = KukaDiverseObjectEnv(renders=False, isDiscrete=True, removeHeightHack=False, maxSteps=20)
+env = gym.make("DualArmEnv-v0") 
 env.cid = p.connect(p.DIRECT)
 
 # set up matplotlib
@@ -95,7 +98,7 @@ def get_screen():
     global stacked_screens
     # Returned screen requested by gym is 400x600x3, but is sometimes larger
     # such as 800x1200x3. Transpose it into torch order (CHW).
-    screen = env._get_observation().transpose((2, 0, 1))
+    screen = env.render().transpose((2, 0, 1))
     # Convert to float, rescale, convert to torch tensor
     # (this doesn't require a copy)
     
@@ -123,7 +126,8 @@ LEARNING_RATE = 1e-4
 # returned from pybullet (48, 48, 3).  
 init_screen = get_screen()
 _, _, screen_height, screen_width = init_screen.shape
-n_actions = 2
+n_actions = 8
+
 policy_net = DQN(screen_height, screen_width, n_actions).to(device)
 target_net = DQN(screen_height, screen_width, n_actions).to(device)
 target_net.load_state_dict(policy_net.state_dict())
@@ -183,9 +187,10 @@ def optimize_model():
     expected_state_action_values = (next_state_values * GAMMA) + reward_batch
 
     # Compute Huber loss
-    loss = F.smooth_l1_loss(state_action_values, expected_state_action_values.unsqueeze(1))
+    loss = F.smooth_l1_loss(state_action_values.float(), expected_state_action_values.unsqueeze(1).float())
 
     # Optimize the model
+    print(loss)
     optimizer.zero_grad()
     loss.backward()
     for param in policy_net.parameters():
